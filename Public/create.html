@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro</title>
+</head>
+<body>
+
+    <form id="registroForm">
+        <label for="registroUsername">Nombre de usuario:</label>
+        <input type="text" id="registroUsername" name="username" required>
+        <label for="registroPassword">Contraseña:</label>
+        <input type="password" id="registroPassword" name="password" required>
+        <button type="submit">Registrarse</button>
+    </form>
+
+    <div id="registroMessage">nada</div>
+
+    
+
+    <script>
+
+        document.getElementById('registroForm').addEventListener('submit', function(event) {
+
+            event.preventDefault();
+            const user = document.getElementById('registroUsername').value
+            const pass = document.getElementById('registroPassword').value
+
+            const registroData = {
+                username: user,
+                password: pass
+            };
+
+
+
+            fetch('/registro', {
+
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(registroData)
+
+                
+            })
+
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Error al registrar usuario');
+                }
+            })
+
+            .then(data => {
+                // Redireccionar al usuario a la página de bienvenida con el nombre de usuario en la URL
+                const userData = {username: user};
+
+                // Redireccionar al usuario a la página de bienvenida sin incluir el nombre de usuario en la URL
+                fetch('/pagina-de-bienvenida', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(userData)
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.text(); // obtener el HTML de la página de bienvenida
+                    } else {
+                        throw new Error('Error al cargar la página de bienvenida');
+                    }
+                })
+                .then(ok => {
+                    console.log("Ok:True")
+                    window.location.href = '/home'
+                    // Insertar el HTML recibido en el documento actual
+                    /*document.open();
+                    document.write(html);
+                    document.close();*/
+                })
+                .catch(error => {
+                    console.log('Error al cargar la página de bienvenida:', error);
+                });
+                
+            })
+
+            .catch(error => {
+                console.log('Error al registrar usuario:', error);
+                document.getElementById('registroMessage').textContent = 'Error al registrar usuario';
+            });
+            });
+
+    </script>
+    
+</body>
+</html>

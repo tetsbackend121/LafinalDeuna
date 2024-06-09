@@ -1,0 +1,68 @@
+/* CSS */
+
+/* Restaurar estilos por defecto */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1, h2 {
+    margin-bottom: 10px;
+}
+
+.messages-container {
+    display: flex;
+    justify-content: space-between; /* Los divs están equitativamente espaciados */
+}
+
+.send-message-container, .messages-list {
+    width: 48%; /* Ancho del 48% para dejar espacio para los márgenes */
+    padding: 20px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+/* Otras reglas de estilo según sea necesario */
+
+
+
+/* Estilos para PDF */
+iframe {
+    display: block;
+    
+    width: 30%;
+    height: 200px;
+    border: 2px solid #666;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Estilos para Imágenes */
+img {
+    display: block;
+    
+    max-width: 30%;
+    height: auto;
+    border: 5px solid #666;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Estilos para Videos */
+video {
+    display: block;
+    
+    width: 30%;
+    height: auto;
+    border: 2px solid #666;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}

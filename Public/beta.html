@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/styles.css">
+    <title>Bienvenido</title>
+</head>
+<body>
+    <!-- Contenido HTML -->
+    <div class="container">
+        <h1 id="nombre">Bienvenido, <span id="usernamePlaceholder"></span></h1>
+
+        <div class="messages-container">
+            <div class="send-message-container" id="box">
+                <h2>Enviar Mensaje</h2>
+                <form id="sendMessageForm">
+                    <label for="recipient">Destinatario:</label>
+                    <input type="text" id="recipient" name="recipient" required><br><br>
+                    <label for="message">Mensaje:</label><br>
+                    <textarea id="message" name="message" rows="4" cols="30" ></textarea><br><br>
+                    
+                    <p id="duracion"></p>
+                    <button type="button" id="btnComenzarGrabacion">Comenzar Grabación</button>
+                    <button type="button" id="btnDetenerGrabacion" disabled>Detener Grabación</button>
+                    <button type="button" id="btnCancelar">Cancelar</button>
+                    <audio id="audio-player"></audio>
+                    <input type="file" id="fileInput" multiple/>
+                    <button id="uploadButton">Confirmar Archivo</button>
+
+                    <button type="submit" id="btnEnviarMensaje">Enviar Mensaje</button>
+
+                </form>
+
+                <div id="registroMessage">Online</div>
+            </div>
+
+            <div class="messages-list" id="box">
+                <h2>Mensajes Recibidos</h2>
+                <div id="ObtenerMensajes"></div>
+                <div id="messagesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="notificationSound" src="audio/notification.mp3" preload="auto" style="display: none;"></audio>
+
+    <script>
+        // Obtener nombre de usuario del título
+        var fromusername = document.getElementById('nombre').textContent;
+        const user = fromusername.substring(12);
+        var previousMessagesLength = 0;
+        var numberOfProperties = 0;
+
+        let formData;
+        let tipo;
+        let accion;
+        let fileInput;
+        
+        tipo = "texto"
+
+        // Función para mostrar notificaciones
+        function mostrarNotificacionReal() {
+            // Crear la notificación
+
+            // Reproducir el sonido de notificación
+            var audio = document.getElementById("notificationSound");
+            audio.play();
+        }
+
+        function EditarRead(check) {
+            console.log("Check: " + check)
+
+            check = { id: check }
+
+            fetch('/read', {
+
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(check) // `data` es tu objeto JSON que contiene el ID y otros campos para actualizar el mensaje
+                })
+
+                .then(response => {
+
+                    if (!response.ok) {
+                        throw new Error('Error al actualizar el mensaje');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Listo check")
+                        // Manejar la respuesta del servidor
+                })
+                .catch(error => {
+                    console.log('Error:', error);
+                });
+        }
+
+        // Actualiza la interfaz con los mensajes recibidos
+        function actualizarInterfaz(messages) {
+            const messagesList = document.getElementById('messagesList');
+            messagesList.innerHTML = '';
+
+            messages.forEach(message => {
+
+                id = message._id
+                console.log("que: " + message.read)
+
+
+                const messageElement = document.createElement('div');
+
+
+                if (message.sender === user) {
+                    if (message.tipo == "texto") {
+                        messageElement.textContent = `YO: ${message.message}` ;
+
+                    } 
+
+                    if (message.tipo === 'audio') {
+                        const audioElement = document.createElement('audio');
+                        //audioElement.src = message.buffer; // Suponiendo que el mensaje contiene la URL del archivo de audio
+                        audioElement.controls = true;
+                        messageElement.textContent = `${message.sender}:`;
+
+                        const uint8Array = new Uint8Array(message.datos.data);
+
+                        const audioBlob = new Blob([uint8Array], { type: 'audio/webm' });
+
+                        
+
+                        // Crear una URL para el Blob
+                        const audioUrl = URL.createObjectURL(audioBlob);
+
+                        audioElement.src = audioUrl;
+
+           
+                        audioElement.controls = true;
+
+                        document.body.appendChild(audioElement);
+
+                       
+
+                        messageElement.appendChild(audioElement);
+
+                    } else if (message.tipo === 'file'){
+                        console.log("dentro")
+                        
+                        messageElement.textContent = `${message.sender}:`;
+
+                        const uint8Array = new Uint8Array(message.datos.data);
+
+                        typeapp = message.filetype
+                        typeapp = String(typeapp)
+                        
+
+                        const fileBlob = new Blob([uint8Array], { type: String(typeapp) });
+
+                        
+
+                        // Crear una URL para el Blob
+                        const blobUrl = URL.createObjectURL(fileBlob);
+
+                        //fileElement.src = fileUrl;
+
+                        let fileElement;
+
+                        if (typeapp === 'application/pdf') {
+
+                            var link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.target = '_blank';
+                            // Create an iframe element if the file is a PDF
+                            fileElement = document.createElement('iframe');
+                            fileElement.src = blobUrl;
+                            fileElement.width = '100%';
+                            fileElement.height = '500px';
+
+                            link.appendChild(fileElement);
+
+                        } else if (typeapp.startsWith('image/')) {
+                            // Create an image element if the file is an image
+
+                            var link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.target = '_blank';
+
+                            fileElement = document.createElement('img');
+                            fileElement.src = blobUrl;
+
+                            // Añadir la imagen al enlace
+                            link.appendChild(fileElement);
+
+                        } else if (typeapp.startsWith('video/')) {
+
+                            var link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.target = '_blank';
+                            // Create a video element if the file is a video
+                            fileElement = document.createElement('video');
+                            fileElement.controls = true;
+                            fileElement.src = blobUrl;
+
+                            link.appendChild(fileElement);
+
+                        } else {
+
+                            // For other file types, provide a download link
+                            link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.download = link.name;
+                            
+                            link.textContent = "Descargar archivo para abrirlo";
+                        }
+
+
+
+                        document.body.appendChild(link);
+
+                        messageElement.appendChild(link);
+
+                    } 
+                    
+                    
+                   
+                    
+
+                } else {
+                    
+                    if (message.read == false) {
+                        
+                        mostrarNotificacionReal()
+                        EditarRead(id)
+                        
+
+
+                    }
+
+                
+
+                    if (message.tipo === 'audio') {
+                        const audioElement = document.createElement('audio');
+                        //audioElement.src = message.buffer; // Suponiendo que el mensaje contiene la URL del archivo de audio
+                        audioElement.controls = true;
+                        messageElement.textContent = `${message.sender}:`;
+
+                        const uint8Array = new Uint8Array(message.datos.data);
+
+                        const audioBlob = new Blob([uint8Array], { type: 'audio/webm' });
+
+                        
+
+                        // Crear una URL para el Blob
+                        const audioUrl = URL.createObjectURL(audioBlob);
+
+                        audioElement.src = audioUrl;
+
+           
+                        audioElement.controls = true;
+
+                        document.body.appendChild(audioElement);
+
+                       
+
+                        messageElement.appendChild(audioElement);
+
+                    } else if (message.tipo === 'file'){
+                        console.log("dentro")
+                        
+                        messageElement.textContent = `${message.sender}:`;
+
+                        const uint8Array = new Uint8Array(message.datos.data);
+
+                        typeapp = message.filetype
+                        typeapp = String(typeapp)
+                        
+
+                        const fileBlob = new Blob([uint8Array], { type: String(typeapp) });
+
+                        
+
+                        // Crear una URL para el Blob
+                        const blobUrl = URL.createObjectURL(fileBlob);
+
+                        //fileElement.src = fileUrl;
+
+                        let fileElement;
+
+                        if (typeapp === 'application/pdf') {
+
+                            var link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.target = '_blank';
+                            // Create an iframe element if the file is a PDF
+                            fileElement = document.createElement('iframe');
+                            fileElement.src = blobUrl;
+                            fileElement.width = '100%';
+                            fileElement.height = '500px';
+
+                            link.appendChild(fileElement);
+
+                        } else if (typeapp.startsWith('image/')) {
+                            // Create an image element if the file is an image
+
+                            var link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.target = '_blank';
+
+                            fileElement = document.createElement('img');
+                            fileElement.src = blobUrl;
+
+                            // Añadir la imagen al enlace
+                            link.appendChild(fileElement);
+
+                        } else if (typeapp.startsWith('video/')) {
+
+                            var link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.target = '_blank';
+                            // Create a video element if the file is a video
+                            fileElement = document.createElement('video');
+                            fileElement.controls = true;
+                            fileElement.src = blobUrl;
+
+                            link.appendChild(fileElement);
+
+                        } else {
+
+                            // For other file types, provide a download link
+                            link = document.createElement('a');
+                            link.href = blobUrl;
+                            link.download = link.name;
+                            
+                            link.textContent = "Descargar archivo para abrirlo";
+                        }
+
+
+
+                        document.body.appendChild(link);
+
+                        messageElement.appendChild(link);
+
+                    } 
+                    
+                    else {
+                        messageElement.textContent = `${message.sender}:${message.message} `;
+                    }
+
+
+
+                    //messageElement.textContent = `Usuario:${message.sender}  -  Mensaje:${message.message} `;
+
+
+                    // Mostrar notificación para los mensajes recibidos de otros usuarios
+
+
+                }
+
+                messagesList.appendChild(messageElement);
+            });
+
+            previousMessagesLength = messages.length;
+            
+            
+
+
+        }
+
+        // Función para obtener los mensajes del servidor
+        function obtenerMensajes() {
+            // Obtener el nombre de usuario del destinatario de los mensajes
+            const User = { username: user }; // Reemplaza 'bueno' con el nombre de usuario del destinatario
+
+            fetch('/mensajes-recibidos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(User)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error al obtener mensajes');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const messages = data.mensajes;
+                    let keyss = Object.keys(messages);
+                    let numberOfPropertiess = keyss.length;
+                    
+                    console.log(numberOfPropertiess + ">" + numberOfProperties)
+
+                    if (numberOfPropertiess >= numberOfProperties) {
+                        console.log("ACADA RATO")
+                        numberOfProperties = numberOfPropertiess
+                        actualizarInterfaz(messages);
+
+                    }
+
+                    else {
+
+                        actualizarInterfaz(messages);
+
+                    }
+                })
+                .catch(error => {
+                    console.log('Error:', error);
+                    const messagesList = document.getElementById('messagesList');
+                    messagesList.textContent = 'Error al obtener mensajes';
+                });
+        }
+
+        obtenerMensajes(); // Obtener mensajes cuando se carga la página
+
+        // Obtener mensajes cada 5 segundos (5000 milisegundos)
+        setInterval(obtenerMensajes, 500);
+
+        const tieneSoporteUserMedia = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+        if (!tieneSoporteUserMedia()) {
+            alert("Tu navegador no soporta la API de getUserMedia");
+        }
+
+        let mediaRecorder;
+        let tiempoInicio;
+        let idIntervalo;
+        let urlParaDescargar;
+
+        const limpiarSelect = () => {
+            const $listaDeDispositivos = document.querySelector("#listaDeDispositivos");
+            for (let x = $listaDeDispositivos.options.length - 1; x >= 0; x--) {
+                $listaDeDispositivos.options.remove(x);
+            }
+        }
+
+        const segundosATiempo = numeroDeSegundos => {
+            let horas = Math.floor(numeroDeSegundos / 60 / 60);
+            numeroDeSegundos -= horas * 60 * 60;
+            let minutos = Math.floor(numeroDeSegundos / 60);
+            numeroDeSegundos -= minutos * 60;
+            numeroDeSegundos = parseInt(numeroDeSegundos);
+            if (horas < 10) horas = "0" + horas;
+            if (minutos < 10) minutos = "0" + minutos;
+            if (numeroDeSegundos < 10) numeroDeSegundos = "0" + numeroDeSegundos;
+
+            return `${horas}:${minutos}:${numeroDeSegundos}`;
+        };
+
+        const comenzarAContar = () => {
+            console.log("contandooooo")
+            tiempoInicio = Date.now();
+            idIntervalo = setInterval(() => {
+                const duracion = document.querySelector("#duracion");
+                duracion.textContent = "Tiempo transcurrido: " + segundosATiempo((Date.now() - tiempoInicio) / 1000);
+            }, 1000);
+        };
+
+        const detenerConteo = () => {
+            clearInterval(idIntervalo);
+            tiempoInicio = null;
+            //document.getElementById('btnComenzarGrabacion').disabled = false;
+            //document.getElementById('btnDetenerGrabacion').disabled = false;
+        }
+
+        const comenzarAGrabar = () => {
+            
+            if (mediaRecorder) return console.log("grabando");
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start();
+                    comenzarAContar();
+                    const fragmentosDeAudio = [];
+                    mediaRecorder.addEventListener("dataavailable", evento => {
+                        fragmentosDeAudio.push(evento.data);
+                    });
+                    mediaRecorder.addEventListener("stop", () => {
+                        stream.getTracks().forEach(track => track.stop());
+                        detenerConteo();
+
+                        if (accion == "Detener"){
+                            const blobAudio = new Blob(fragmentosDeAudio, { 'type': 'audio/webm' });
+
+                            urlParaDescargar = URL.createObjectURL(blobAudio);
+                            audioElement = document.getElementById('audio-player');
+                            audioElement.src = urlParaDescargar;
+
+                            // Crear FormData y agregar el Blob de audio al formulario
+                            formData = new FormData();
+                            recipientt = document.getElementById('recipient').value;
+                            //formData.append(user, blobAudio, recipientt);
+                            formData.append('audio', blobAudio, String([String(recipientt), String(user)]))
+
+                        } else {
+                            audioElement = document.getElementById('audio-player');
+                            audioElement.src = ""
+                            urlParaDescargar = ""
+                            
+                            formData = ""
+                            
+                        }
+
+                        
+
+                        // Realizar la solicitud Fetch al servidor
+
+                    });
+                })
+                .catch(error => console.log("Error al obtener acceso al micrófono:", error));
+            
+            audio = document.getElementById('audio-player');
+            audio.setAttribute('src', "w");
+            audio.src = ""
+
+        };
+
+        const detenerGrabacion = () => {
+            audio = document.getElementById('audio-player');
+            audio.setAttribute('src', "arriba1");
+            audio.src = ""
+            if (!mediaRecorder) return console.log("se paro");
+
+            mediaRecorder.stop();
+        
+            detenerConteo();
+         
+        };
+
+        // Event listener para el envío de mensajes
+        document.getElementById('btnEnviarMensaje').addEventListener('click', function(event) {
+
+            // No hay necesidad de prevenir el evento porque el botón es de tipo "submit"
+
+            event.preventDefault();
+
+            
+
+            recipient = document.getElementById('recipient').value;
+            message = document.getElementById('message').value;
+
+            const messageSend = {
+                recipient: recipient,
+                message: message,
+                fromusername: user,
+                tipo: tipo
+            };
+
+            decidir = ""
+            typedata = ""
+
+            if (tipo == "audio"){
+                message = ""   
+
+                tipo = "texto"
+                accion = "Cancelar"
+                document.getElementById("message").disabled = false
+                document.getElementById("btnEnviarMensaje").disabled = false
+                document.getElementById("fileInput").disabled = false
+                document.getElementById("uploadButton").disabled = false
+                // Detener la grabación de audio
+                // Detener la grabación de audio             
+                detenerGrabacion();
+                mediaRecorder = false
+                //detenerGrabacion();
+                detenerConteo()         
+                document.getElementById("btnDetenerGrabacion").disabled = true
+                // Limpiar el FormData         
+                // Limpiar el contenido del elemento de duración
+                const duracion = document.querySelector("#duracion");
+                duracion.textContent = "";
+                var scriptTag = document.getElementById('audio-player');
+                // Eliminar el atributo src
+                scriptTag.removeAttribute('controls');
+
+
+
+
+
+                decidir = formData
+                typedata = { 'type': 'audio/webm' }
+
+            } 
+            
+            else if (tipo == "file") {
+
+                
+                accion = "Cancelar"
+                console.log("nose que pasa")
+                formDataa = new FormData();
+
+                filetype = fileInput.files[0].type;
+                console.log("what:" + filetype)
+                recipientt = document.getElementById('recipient').value;
+                modified_string = filetype.replace(/\//g, ',');
+                mierda = "file," + modified_string
+                formDataa.append('audio', fileInput.files[0], String([String(recipientt), String(user), String(mierda)]))
+                tipo = "texto"
+                document.getElementById("message").disabled = false
+                document.getElementById("btnEnviarMensaje").disabled = false
+                document.getElementById("fileInput").disabled = false
+                document.getElementById("uploadButton").disabled = false
+                document.getElementById("btnComenzarGrabacion").disabled = false
+                // Detener la grabación de audio
+
+
+                decidir = formDataa
+                console.log(decidir)
+                console.dir(decidir)
+                typedata = { 'type': 'audio/webm' }
+                
+
+            } 
+            
+            else {
+                decidir = JSON.stringify(messageSend)
+                
+                typedata = { 'Content-Type': 'application/json' }
+
+
+            }
+
+            fetch('/enviar-mensaje', {
+                    method: 'POST',
+                    headers: typedata,
+                    body: decidir
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error('Error');
+                    }
+                })
+                .then(data => {
+                    function MensajeEnviado() {
+                        document.getElementById('registroMessage').textContent = data.mensaje;
+
+                        // Esperar 2000 milisegundos (2 segundos)
+                        setTimeout(function() {
+                            document.getElementById('registroMessage').textContent = "Online";
+                        }, 1000);
+                    }
+
+                    MensajeEnviado();
+                })
+                .catch(error => {
+                    console.log('Error al enviar:', error);
+                    document.getElementById('registroMessage').textContent = 'Error al enviar';
+                });
+        });
+
+        document.getElementById('btnComenzarGrabacion').addEventListener('click', function(event) {
+
+            document.getElementById("message").disabled = true
+            document.getElementById("btnEnviarMensaje").disabled = true
+            document.getElementById("fileInput").disabled = true
+            document.getElementById("uploadButton").disabled = true
+            document.getElementById("btnDetenerGrabacion").disabled = false
+            
+                    
+
+            var audio = document.getElementById('audio-player');
+    
+            // Agrega el atributo "controls"
+            
+            audio.setAttribute('controls', true);
+            // No enviar formulario
+            event.preventDefault();
+            console.log("Comenzar Grabación");
+            comenzarAGrabar();
+        });
+
+        document.getElementById('btnDetenerGrabacion').addEventListener('click', function(event) {
+
+            accion = "Detener"
+            tipo = "audio"
+            // No enviar formulario
+            event.preventDefault();
+            console.log("Detener Grabación");
+            
+            detenerGrabacion();
+            mediaRecorder = false
+            document.getElementById("btnEnviarMensaje").disabled = false
+            document.getElementById("btnDetenerGrabacion").disabled = true
+        });
+
+        document.getElementById('btnCancelar').addEventListener('click', function(event) {
+            // No enviar formulario
+            event.preventDefault();
+            tipo = "texto"
+            accion = "Cancelar"
+            fileInput.value = '';
+            document.getElementById("message").disabled = false
+            document.getElementById("btnEnviarMensaje").disabled = false
+            document.getElementById("fileInput").disabled = false
+            document.getElementById("uploadButton").disabled = false
+            document.getElementById('btnComenzarGrabacion').disabled = false
+            // Detener la grabación de audio
+            // Detener la grabación de audio
+            
+            detenerGrabacion();
+            mediaRecorder = false
+            //detenerGrabacion();
+            detenerConteo()
+            
+            document.getElementById("btnDetenerGrabacion").disabled = true
+            // Limpiar el FormData
+             
+            // Limpiar el contenido del elemento de duración
+            const duracion = document.querySelector("#duracion");
+            duracion.textContent = "";
+
+            var scriptTag = document.getElementById('audio-player');
+    
+            // Eliminar el atributo src
+            scriptTag.removeAttribute('controls');
+                                 
+        });
+
+        document.getElementById("uploadButton").addEventListener('click', function(event) {
+            tipo = "file"
+            fileInput = document.getElementById('fileInput');
+            console.log(fileInput.files[0].type)
+            
+            if (fileInput.files.length === 0) {
+                alert('Por favor seleccione un archivo.');
+            
+            }
+
+
+            
+            
+            // No enviar formulario
+            event.preventDefault();
+
+            
+                    
+            document.getElementById("btnComenzarGrabacion").disabled = true
+            document.getElementById("btnDetenerGrabacion").disabled = true
+            document.getElementById("message").disabled = true
+            document.getElementById("btnEnviarMensaje").disabled = false
+            
+            });
+
+    </script>
+</body>
+</html>
